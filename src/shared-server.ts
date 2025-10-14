@@ -52,10 +52,11 @@ function buildSystemPrompt(targetLength?: number): string {
   const styleRules = `必须遵守！
 - 
 - 如果背景信息中提供了回答的模版，必须严格遵循模版。
-- 任何文档内容都需要通顺易懂，尽量少的使用形容词，不过度夸张，态度谦虚真诚热情，突出自然真实。
+- 你写的内容需要通顺易懂，尽量少的使用形容词，不过度夸张，态度谦虚真诚热情，突出自然真实。
 - 允许略微的口语话，亲切自然，把"若"改为"如果"，把"则"改为"就"，把"且"改为"而且"，把“xxx时”改为“xxx的时候”，把“xxx后”改为“xxx之后”，不称呼读者为"你"，而是称为"我们"
 - 尽可能减少使用分点，除非真的使用列表来展示会更加直观。
 - 尽可能少用比喻/形容/排比，除非真的会使表达效果会更好。
+- 中英文之间需要添加空格。
 - 禁止泛泛而谈，禁止空洞的内容，少说废话。`;
 
   // Get custom writing rules from environment variable
@@ -197,7 +198,7 @@ export async function buildServer(): Promise<McpServer> {
 - "用 Better Writer 写一篇关于XX的文章"
 - "用 bw 帮我写个XX介绍"
 - "使用 Better Writer 生成XX内容"
-如果用户没有明确提及 "Better Writer"、"bw" 或类似的工具名称，请不要主动调用此工具。`;
+`;
 
   const toolDescription = baseDescription + (isDefault ? whenToUseDefault : whenToUseExplicit);
 
