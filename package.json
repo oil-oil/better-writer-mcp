@@ -1,6 +1,6 @@
 {
   "name": "better-writer-mcp",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "type": "module",
   "description": "高质量中文内容生成 MCP 服务 - 自然、真实、无 AI 味儿的写作工具",
   "main": "dist/index.js",
