@@ -16,16 +16,24 @@ Better Writer MCP 的提示词设计围绕三个核心理念：
 
 ### 第一步：获取 API Key
 
-Better Writer MCP 使用 OpenRouter 作为 LLM 服务提供商。你需要：
+Better Writer MCP 支持两种 LLM 后端：**OpenRouter** 和 **Gemini**。
+
+#### 选项 A：使用 OpenRouter（默认，支持多种模型）
 
 1. 访问 [OpenRouter 官网](https://openrouter.ai) 注册账号
 2. 在账户设置中创建 API Key
 3. 配置到环境变量或 MCP 配置文件中
 
+#### 选项 B：使用 Gemini（Google 官方 API）
+
+1. 访问 [Google AI Studio](https://aistudio.google.com/) 获取 API Key
+2. 配置 `GEMINI_API_KEY` 和 `LLM_BACKEND=gemini` 环境变量
+
 ### 第二步：配置 MCP Server
 
-
 在任何支持配置 MCP 的客户端中添加如下配置：
+
+#### 使用 OpenRouter（默认）
 
 ```json
 {
@@ -39,6 +47,21 @@ Better Writer MCP 使用 OpenRouter 作为 LLM 服务提供商。你需要：
 }
 ```
 
+#### 使用 Gemini
+
+```json
+{
+  "better-writer": {
+    "command": "npx",
+    "args": ["-y", "better-writer-mcp"],
+    "env": {
+      "LLM_BACKEND": "gemini",
+      "GEMINI_API_KEY": "your-gemini-api-key-here"
+    }
+  }
+}
+```
+
 ---
 
 ## 高级配置
@@ -47,8 +70,15 @@ Better Writer MCP 使用 OpenRouter 作为 LLM 服务提供商。你需要：
 
 | 变量名 | 说明 | 默认值 | 是否必填 |
 |--------|------|--------|---------|
-| `OPENROUTER_KEY` | OpenRouter API 密钥 | - | ✅ 是 |
-| `OPENROUTER_MODEL` | 指定使用的 LLM 模型 | `qwen/qwen3-next-80b-a3b-instruct` | ❌ 否 |
+| `LLM_BACKEND` | LLM 后端选择：`openrouter` 或 `gemini` | `openrouter` | ❌ 否 |
+| **OpenRouter 相关** | | | |
+| `OPENROUTER_KEY` | OpenRouter API 密钥 | - | ✅ 使用 OpenRouter 时必填 |
+| `OPENROUTER_MODEL` | 指定使用的模型 | `qwen/qwen3-next-80b-a3b-instruct` | ❌ 否 |
+| **Gemini 相关** | | | |
+| `GEMINI_API_KEY` | Gemini API 密钥 | - | ✅ 使用 Gemini 时必填 |
+| `GEMINI_MODEL` | 指定使用的 Gemini 模型 | `gemini-2.5-flash` | ❌ 否 |
+| `GEMINI_DISABLE_THINKING` | 禁用 Gemini 2.5 的思考模式 | `false` | ❌ 否 |
+| **通用配置** | | | |
 | `BW_DEFAULT_TOOL` | 是否作为默认写作工具 | `false` | ❌ 否 |
 | `BETTER_WRITER_CUSTOM_RULES` | 自定义写作规则 | - | ❌ 否 |
 
@@ -104,18 +134,69 @@ Better Writer MCP 使用 OpenRouter 作为 LLM 服务提供商。你需要：
 
 ### 更换模型
 
-如果你想使用其他模型（比如 GPT-5、Gemini 等），可以设置 `OPENROUTER_MODEL`：
+#### 通过 OpenRouter 使用其他模型
+
+如果你想使用其他模型（比如 GPT-4、Claude 等），可以设置 `OPENROUTER_MODEL`：
 
 ```json
 {
   "env": {
     "OPENROUTER_KEY": "your-api-key-here",
-    "OPENROUTER_MODEL": "google/gemini-2.5-pro"
+    "OPENROUTER_MODEL": "anthropic/claude-3.5-sonnet"
   }
 }
 ```
 
 支持的模型列表请参考 [OpenRouter Models](https://openrouter.ai/models)。
+
+#### 使用不同的 Gemini 模型
+
+Gemini 提供多个模型版本，你可以根据需求选择：
+
+```json
+{
+  "env": {
+    "LLM_BACKEND": "gemini",
+    "GEMINI_API_KEY": "your-gemini-api-key-here",
+    "GEMINI_MODEL": "gemini-2.5-pro"
+  }
+}
+```
+
+可用的 Gemini 模型：
+- `gemini-2.5-flash`（默认）- 速度快，成本低
+- `gemini-2.5-pro` - 更强大的推理能力
+
+#### 关于 Gemini 2.5 的思考模式
+
+Gemini 2.5 系列模型默认启用"思考"功能以提升质量，但会增加运行时间和令牌用量。如果你希望更快的响应速度，可以禁用它：
+
+```json
+{
+  "env": {
+    "LLM_BACKEND": "gemini",
+    "GEMINI_API_KEY": "your-gemini-api-key-here",
+    "GEMINI_DISABLE_THINKING": "true"
+  }
+}
+```
+
+### OpenRouter vs Gemini 对比
+
+| 特性 | OpenRouter | Gemini |
+|------|-----------|--------|
+| **模型选择** | 支持多种模型（Claude、GPT、Qwen 等） | 仅支持 Gemini 系列模型 |
+| **Web Search** | ✅ 支持（native/exa 引擎） | ❌ 不支持 |
+| **默认模型** | Qwen3-Next-80B（中文内容生成效果好） | Gemini 2.5 Flash |
+| **计费方式** | 按 OpenRouter 统一定价 | 按 Google 官方定价 |
+| **API 稳定性** | 依赖 OpenRouter 服务 | Google 官方 API |
+| **思考模式** | 取决于具体模型 | Gemini 2.5 默认启用 |
+| **适用场景** | 需要多模型切换、联网搜索 | 仅使用 Gemini，追求稳定性 |
+
+**选择建议**：
+- 如果需要**联网搜索最新资料**，必须使用 OpenRouter
+- 如果追求**API 稳定性**和**成本控制**，推荐使用 Gemini 官方 API
+- 如果想尝试不同模型，OpenRouter 提供更多选择
 
 ---
 

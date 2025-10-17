@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { writeFile, mkdir } from 'fs/promises';
 import { dirname } from 'path';
+import { GoogleGenAI } from '@google/genai';
 
 // Resolve OpenRouter API key from env; support both common casings.
 function getOpenRouterKey(): string {
@@ -12,6 +13,31 @@ function getOpenRouterKey(): string {
     process.env.openrouter_api_key ||
     ''
   );
+}
+
+// Resolve Gemini API key from env
+function getGeminiKey(): string {
+  return (
+    process.env.GEMINI_API_KEY ||
+    process.env.gemini_api_key ||
+    process.env.GEMINI_KEY ||
+    process.env.gemini_key ||
+    ''
+  );
+}
+
+// Determine which LLM backend to use: 'gemini' or 'openrouter'
+function getLLMBackend(): 'gemini' | 'openrouter' {
+  const backend = (
+    process.env.LLM_BACKEND ||
+    process.env.llm_backend ||
+    'openrouter'
+  ).toLowerCase();
+  
+  if (backend === 'gemini') {
+    return 'gemini';
+  }
+  return 'openrouter';
 }
 
 // Get custom writing rules from environment variable
@@ -92,6 +118,68 @@ function buildUserMessage({
   }
   parts.push(`写作指令：\n${instruction}`);
   return parts.join('\n\n');
+}
+
+async function callGemini({
+  model,
+  messages,
+  temperature,
+}: {
+  model: string;
+  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
+  temperature?: number;
+}): Promise<{ content: string; model?: string; id?: string; usage?: unknown }> {
+  const apiKey = getGeminiKey();
+  if (!apiKey) {
+    throw new Error('Missing Gemini API key. Set env GEMINI_API_KEY or gemini_api_key.');
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  // 合并 system 和 user 消息
+  // Gemini API 将 system 指令通过 systemInstruction 传递
+  let systemInstruction = '';
+  const contentParts: string[] = [];
+
+  for (const msg of messages) {
+    if (msg.role === 'system') {
+      systemInstruction += msg.content + '\n\n';
+    } else if (msg.role === 'user') {
+      contentParts.push(msg.content);
+    }
+  }
+
+  const contents = contentParts.join('\n\n');
+
+  try {
+    const response = await ai.models.generateContent({
+      model: model || 'gemini-2.5-flash',
+      contents,
+      config: {
+        systemInstruction: systemInstruction || undefined,
+        temperature: typeof temperature === 'number' ? temperature : 1,
+        // Gemini 2.5 默认启用思考功能,可以通过设置 thinkingBudget 为 0 禁用
+        // 这里保留默认行为,用户可以通过环境变量控制
+        ...(process.env.GEMINI_DISABLE_THINKING === 'true' && {
+          thinkingConfig: {
+            thinkingBudget: 0,
+          },
+        }),
+      },
+    });
+
+    const content = response.text || '';
+    
+    return {
+      content,
+      model: model || 'gemini-2.5-flash',
+      id: undefined,
+      usage: undefined,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Gemini API request failed: ${message}`);
+  }
 }
 
 async function callOpenRouter({
@@ -175,6 +263,35 @@ async function callOpenRouter({
   };
 }
 
+// 统一的 LLM 调用接口
+async function callLLM({
+  model,
+  messages,
+  temperature,
+  webSearch,
+}: {
+  model: string;
+  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
+  temperature?: number;
+  webSearch?: {
+    enabled: boolean;
+    engine?: 'native' | 'exa';
+    maxResults?: number;
+  };
+}): Promise<{ content: string; model?: string; id?: string; usage?: unknown }> {
+  const backend = getLLMBackend();
+  
+  if (backend === 'gemini') {
+    // Gemini 不支持 web search,如果用户启用了,给出警告
+    if (webSearch?.enabled) {
+      console.warn('Warning: Gemini backend does not support web search. Ignoring webSearch parameter.');
+    }
+    return callGemini({ model, messages, temperature });
+  } else {
+    return callOpenRouter({ model, messages, temperature, webSearch });
+  }
+}
+
 export async function buildServer(): Promise<McpServer> {
   const server = new McpServer({ name: 'better-writer-mcp', version: '0.1.0' });
 
@@ -232,7 +349,15 @@ export async function buildServer(): Promise<McpServer> {
           { role: 'user' as const, content: userContent },
         ];
 
-        const selectedModel = process.env.OPENROUTER_MODEL || process.env.openrouter_model || 'qwen/qwen3-next-80b-a3b-instruct';
+        // 根据后端选择模型
+        const backend = getLLMBackend();
+        let selectedModel: string;
+        
+        if (backend === 'gemini') {
+          selectedModel = process.env.GEMINI_MODEL || process.env.gemini_model || 'gemini-2.5-flash';
+        } else {
+          selectedModel = process.env.OPENROUTER_MODEL || process.env.openrouter_model || 'qwen/qwen3-next-80b-a3b-instruct';
+        }
 
         // Prepare web search configuration
         const webSearch = enableWebSearch
@@ -243,7 +368,7 @@ export async function buildServer(): Promise<McpServer> {
             }
           : undefined;
 
-        const result = await callOpenRouter({ 
+        const result = await callLLM({ 
           model: selectedModel, 
           messages,
           webSearch,

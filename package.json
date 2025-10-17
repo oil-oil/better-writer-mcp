@@ -1,6 +1,6 @@
 {
   "name": "better-writer-mcp",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "type": "module",
   "description": "高质量中文内容生成 MCP 服务 - 自然、真实、无 AI 味儿的写作工具",
   "main": "dist/index.js",
@@ -17,7 +17,6 @@
     "start": "tsx src/index.ts",
     "start:http": "tsx src/http.ts",
     "prepublishOnly": "npm run build"
-
   },
   "engines": {
     "node": ">=18"
@@ -30,6 +29,7 @@
     "chinese",
     "writing",
     "openrouter",
+    "gemini",
     "claude",
     "natural-language"
   ],
@@ -44,6 +44,7 @@
   },
   "homepage": "https://github.com/YOUR_USERNAME/better-writer-mcp#readme",
   "dependencies": {
+    "@google/genai": "^1.25.0",
     "@modelcontextprotocol/sdk": "^1.2.0",
     "zod": "^3.23.8"
   },

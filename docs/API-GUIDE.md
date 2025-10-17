@@ -68,13 +68,14 @@ outputFilePath 可以用于内容生成后直接创建 md 文件，这样你需�
 - **类型**: `boolean`
 - **描述**: 是否启用联网搜索功能（可选，默认 false）
 - **作用**: 开启后，AI 会自动搜索最新信息来丰富内容
+- **⚠️ 注意**: 仅 OpenRouter 后端支持，使用 Gemini 后端时此参数会被忽略
 - **使用场景**:
   - 写行业趋势分析（需要最新数据）
   - 技术教程（需要最新文档）
   - 政策解读（需要最新政策信息）
 - **示例**:
   ```
-  true   // 启用联网搜索
+  true   // 启用联网搜索（仅 OpenRouter）
   false  // 不联网，仅用模型知识
   ```
 
@@ -121,13 +122,23 @@ outputFilePath 可以用于内容生成后直接创建 md 文件，这样你需�
 
 | 变量名 | 必填? | 描述 | 示例值 |
 |--------|-------|------|--------|
-| `OPENROUTER_KEY` | ✅ 必填 | OpenRouter API 密钥 | `sk-abc123xyz...` |
+| **后端选择** | | | |
+| `LLM_BACKEND` | 可选 | LLM 后端：`openrouter` 或 `gemini` | `openrouter` (默认) |
+| **OpenRouter 配置** | | | |
+| `OPENROUTER_KEY` | 条件必填 | OpenRouter API 密钥（使用 OpenRouter 时必填） | `sk-abc123xyz...` |
 | `OPENROUTER_MODEL` | 可选 | 指定使用的模型 | `qwen/qwen3-next-80b-a3b-instruct` |
-| `BW_DEFAULT_TOOL` | 可选 | 是否作为默认写作工具 | `true` / `false` (默认 `false`) |
 | `OPENROUTER_BASE_URL` | 可选 | 自定义 API 端点 | `https://openrouter.ai/api/v1` |
+| **Gemini 配置** | | | |
+| `GEMINI_API_KEY` | 条件必填 | Gemini API 密钥（使用 Gemini 时必填） | `AIza...` |
+| `GEMINI_MODEL` | 可选 | 指定使用的 Gemini 模型 | `gemini-2.5-flash` (默认) |
+| `GEMINI_DISABLE_THINKING` | 可选 | 禁用 Gemini 2.5 思考模式 | `true` / `false` (默认 `false`) |
+| **通用配置** | | | |
+| `BW_DEFAULT_TOOL` | 可选 | 是否作为默认写作工具 | `true` / `false` (默认 `false`) |
 | `BETTER_WRITER_CUSTOM_RULES` | 可选 | 自定义写作规则 | `- 所有代码必须有中文注释\n- 不使用'简单'等主观词` |
 
 ###### 配置示例
+
+**使用 OpenRouter（默认）**
 
 ```bash
 # 必填：设置 OpenRouter API 密钥
@@ -148,6 +159,23 @@ export BETTER_WRITER_CUSTOM_RULES="
 "
 ```
 
+**使用 Gemini**
+
+```bash
+# 必填：选择后端和 API 密钥
+export LLM_BACKEND="gemini"
+export GEMINI_API_KEY="your-gemini-api-key-here"
+
+# 可选：指定 Gemini 模型（默认是 gemini-2.5-flash）
+export GEMINI_MODEL="gemini-2.5-pro"
+
+# 可选：禁用思考模式以加快速度
+export GEMINI_DISABLE_THINKING="true"
+
+# 可选：设置为默认写作工具
+export BW_DEFAULT_TOOL="true"
+```
+
 #### 关于 `BW_DEFAULT_TOOL` 环境变量
 
 这个配置决定了 Better Writer 的触发方式：
@@ -164,6 +192,8 @@ export BETTER_WRITER_CUSTOM_RULES="
 - 📌 适合与其他写作工具共存的场景
 
 在 MCP 配置中使用：
+
+**使用 OpenRouter**
 ```json
 {
   "mcpServers": {
@@ -172,6 +202,23 @@ export BETTER_WRITER_CUSTOM_RULES="
       "args": ["-y", "better-writer-mcp"],
       "env": {
         "OPENROUTER_KEY": "your-api-key-here",
+        "BW_DEFAULT_TOOL": "true"
+      }
+    }
+  }
+}
+```
+
+**使用 Gemini**
+```json
+{
+  "mcpServers": {
+    "bw": {
+      "command": "npx",
+      "args": ["-y", "better-writer-mcp"],
+      "env": {
+        "LLM_BACKEND": "gemini",
+        "GEMINI_API_KEY": "your-gemini-api-key-here",
         "BW_DEFAULT_TOOL": "true"
       }
     }
