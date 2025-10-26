@@ -325,26 +325,32 @@ export async function buildServer(): Promise<McpServer> {
 - "使用 Better Writer 生成XX内容"
 `;
 
-  const toolDescription = baseDescription + (isDefault ? whenToUseDefault : whenToUseExplicit);
+  const parametersGuide = `
+
+【参数说明】
+1. **instruction**（必填）：写作指令，明确说明你要生成的内容目标与重点。
+2. **backgroundContext**（可选）：背景信息与规范。Better Writer 对你的信息一无所知，上下文越详细，生成效果越好。
+   - **⚠️ 重要：如果需要翻译或改写文章，必须在此参数中提供完整的原始内容/原文**，不要只提供摘要或部分内容，否则会严重影响翻译和改写的质量和准确性。
+3. **targetLength**（可选）：期望输出长度（大致字符数），帮助控制内容篇幅。
+4. **enableWebSearch**（可选）：是否开启联网搜索。如需最新信息（如行业趋势、政策解读、实时数据），建议设置为 true。
+5. **webSearchEngine**（可选）：联网搜索引擎选择，可选值为 "native"（使用模型原生搜索）或 "exa"（使用 Exa API），默认自动选择。
+6. **webSearchMaxResults**（可选）：联网搜索返回的最大结果数，默认为 5。
+7. **outputFilePath**（可选）：输出文件路径。如果提供此参数，生成的内容将自动保存到指定的文件路径中（支持相对路径和绝对路径，目录不存在会自动创建）。`;
+
+  const toolDescription = baseDescription + (isDefault ? whenToUseDefault : whenToUseExplicit) + parametersGuide;
 
   server.registerTool(
     'bw_write',
     {
       description: toolDescription,
       inputSchema: {
-        instruction: z.string().describe('写作指令：明确你要生成的内容目标与重点'),
-        backgroundContext: z.string()
-          .optional()
-          .describe(`背景信息与规范（可选）：
-            Better Writer 对你的信息一无所知，所以你需要在 backgroundContext 中提供尽可能完善的背景信息，尽可能把你知道的所有上下文都给我，上下文提供的越多越准确，生成的效果越好。
-            如果需要内容转写或者翻译，请提供原始内容。`),
-        targetLength: z.number().optional().describe('期望输出长度（大致字符数，可选）'),
-        enableWebSearch: z.boolean().optional().describe('enableWebSearch：如需最新信息（如行业趋势、政策解读），建议开启联网搜索'),
-        webSearchEngine: z.enum(['native', 'exa']).optional().describe('联网搜索引擎：native（使用模型原生搜索）或 exa（使用 Exa API），默认自动选择'),
-        webSearchMaxResults: z.number().optional().describe('联网搜索返回的最大结果数（可选，默认 5）'),
-        outputFilePath: z.string()
-          .optional()
-          .describe('输出文件路径（可选）：如果提供此参数，生成的内容将自动保存到指定的文件路径中。支持相对路径和绝对路径。如果目录不存在会自动创建。例如："/path/to/output.md" 或 "markdown/article.md"。如果创建了文件，就不用重新把完整内容写到新文件中，而是可以直接复制我创建好文件到指定的位置'),
+        instruction: z.string().describe('写作指令'),
+        backgroundContext: z.string().optional().describe('背景信息与规范'),
+        targetLength: z.number().optional().describe('期望输出长度（字符数）'),
+        enableWebSearch: z.boolean().optional().describe('是否开启联网搜索'),
+        webSearchEngine: z.enum(['native', 'exa']).optional().describe('联网搜索引擎'),
+        webSearchMaxResults: z.number().optional().describe('联网搜索最大结果数'),
+        outputFilePath: z.string().optional().describe('输出文件路径'),
       },
       outputSchema: { content: z.string() },
     },
